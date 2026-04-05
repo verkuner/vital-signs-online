@@ -1,0 +1,30 @@
+.card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--mantine-shadow-md);
+}
+
+.icon {
+  background: linear-gradient(
+    135deg,
+    var(--mantine-primary-color-5),
+    var(--mantine-primary-color-7)
+  );
+  color: white;
+}
+
+.value {
+  font-size: 2rem;
+  font-weight: 900;
+  background: linear-gradient(
+    135deg,
+    var(--mantine-primary-color-5),
+    var(--mantine-primary-color-7)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
