@@ -11,15 +11,20 @@ import {
   ActionIcon,
   Menu,
   TextInput,
+  PasswordInput,
   Button,
   Flex,
   Select,
   Pagination,
+  Modal,
+  Stack,
 } from '@mantine/core'
+import { useForm } from '@mantine/form'
 import { IconSearch, IconDots, IconPencil, IconTrash, IconUserPlus } from '@tabler/icons-react'
 import { modals } from '@mantine/modals'
 import { notifications } from '@mantine/notifications'
-import { deleteUser, getUsers } from '../../../services/usersService'
+import { useDisclosure } from '@mantine/hooks'
+import { deleteUser, getUsers, createUser } from '../../../services/usersService'
 import { User } from '../../../services/mockData'
 
 export function UsersPage() {
@@ -29,18 +34,26 @@ export function UsersPage() {
   const [page, setPage] = useState(1)
   const itemsPerPage = 10
 
+  const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false)
+  const [addLoading, setAddLoading] = useState(false)
+
+  const addForm = useForm({
+    initialValues: { name: '', email: '', password: '' },
+    validate: {
+      name: (v) => (v.length >= 2 ? null : 'Name must be at least 2 characters'),
+      email: (v) => (/^\S+@\S+$/.test(v) ? null : 'Invalid email'),
+      password: (v) => (v.length >= 8 ? null : 'Password must be at least 8 characters'),
+    },
+  })
+
   useEffect(() => {
     let mounted = true
     const load = async () => {
       const data = await getUsers()
-      if (mounted) {
-        setUsers(data)
-      }
+      if (mounted) setUsers(data)
     }
     load()
-    return () => {
-      mounted = false
-    }
+    return () => { mounted = false }
   }, [])
 
   const filteredUsers = users.filter((user) => {
@@ -70,6 +83,30 @@ export function UsersPage() {
     })
   }
 
+  const handleAddUser = async (values: typeof addForm.values) => {
+    setAddLoading(true)
+    try {
+      const newUser = await createUser(values)
+      setUsers((prev) => [newUser, ...prev])
+      closeAdd()
+      addForm.reset()
+      notifications.show({
+        title: 'User created',
+        message: `${newUser.name} (${newUser.email}) has been added`,
+        color: 'green',
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create user'
+      notifications.show({
+        title: 'Error',
+        message,
+        color: 'red',
+      })
+    } finally {
+      setAddLoading(false)
+    }
+  }
+
   return (
     <Container size="xl">
       <Title order={1} mb="xl">
@@ -93,7 +130,9 @@ export function UsersPage() {
             clearable
             style={{ minWidth: 200 }}
           />
-          <Button leftSection={<IconUserPlus size={16} />}>Add User</Button>
+          <Button leftSection={<IconUserPlus size={16} />} onClick={openAdd}>
+            Add User
+          </Button>
         </Flex>
       </Paper>
 
@@ -167,6 +206,39 @@ export function UsersPage() {
           <Pagination total={Math.ceil(filteredUsers.length / itemsPerPage)} value={page} onChange={setPage} />
         </Flex>
       </Paper>
+
+      <Modal opened={addOpened} onClose={closeAdd} title="Add New User" centered>
+        <form onSubmit={addForm.onSubmit(handleAddUser)}>
+          <Stack gap="md">
+            <TextInput
+              label="Full name"
+              placeholder="Jane Doe"
+              required
+              {...addForm.getInputProps('name')}
+            />
+            <TextInput
+              label="Email"
+              placeholder="jane@example.com"
+              required
+              {...addForm.getInputProps('email')}
+            />
+            <PasswordInput
+              label="Password"
+              placeholder="Minimum 8 characters"
+              required
+              {...addForm.getInputProps('password')}
+            />
+            <Group justify="flex-end" mt="sm">
+              <Button variant="default" onClick={closeAdd}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={addLoading}>
+                Create User
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </Modal>
     </Container>
   )
 }
