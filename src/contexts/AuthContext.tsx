@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { apiLogin, apiLogout, apiGetMe, apiRegister, type AuthUser } from '../services/authService'
+import { type AuthUser } from '../services/authService'
+import { getAuthMode, getAuthStrategy } from '../auth/strategies'
+import type { AuthMode } from '../auth/strategies'
 
 interface User {
   id: string
@@ -13,10 +15,12 @@ interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (email: string, password: string) => Promise<void>
+  mode: AuthMode
+  login: (email?: string, password?: string) => Promise<void>
   register: (email: string, password: string, name: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   updateUser: (user: Partial<User>) => void
+  setUserFromAuth: (user: AuthUser) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -36,49 +40,59 @@ function toUser(au: AuthUser): User {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const mode = getAuthMode()
+  const strategy = getAuthStrategy()
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('auth_token')
-      if (!token) {
-        setIsLoading(false)
-        return
-      }
+    let cancelled = false
+    const run = async () => {
       try {
-        const userData = await apiGetMe()
-        if (userData) {
-          setUser(toUser(userData))
-        } else {
-          localStorage.removeItem('auth_token')
-          localStorage.removeItem('refresh_token')
+        const restored = await strategy.init()
+        if (!cancelled && restored) {
+          setUser(toUser(restored))
         }
-      } catch {
-        localStorage.removeItem('auth_token')
-        localStorage.removeItem('refresh_token')
+      } finally {
+        if (!cancelled) setIsLoading(false)
       }
-      setIsLoading(false)
     }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [strategy])
 
-    checkAuth()
-  }, [])
-
-  const login = async (email: string, password: string) => {
-    const data = await apiLogin(email, password)
-    setUser(toUser(data.user))
+  const login = async (email?: string, password?: string) => {
+    if (mode === 'oidc') {
+      // Redirects the browser; this promise effectively never resolves.
+      await strategy.login()
+      return
+    }
+    if (!email || !password) {
+      throw new Error('email and password are required for backend login')
+    }
+    const result = await strategy.login({ email, password })
+    if (result) setUser(toUser(result))
   }
 
   const register = async (email: string, password: string, name: string) => {
-    const data = await apiRegister(email, password, name)
-    setUser(toUser(data.user))
+    if (!strategy.register) {
+      throw new Error('Registration is handled by the identity provider in this mode')
+    }
+    const result = await strategy.register({ email, password, name })
+    setUser(toUser(result))
   }
 
-  const logout = () => {
-    apiLogout()
+  const logout = async () => {
     setUser(null)
+    await strategy.logout()
   }
 
   const updateUser = (updates: Partial<User>) => {
     setUser((prev) => (prev ? { ...prev, ...updates } : null))
+  }
+
+  const setUserFromAuth = (au: AuthUser) => {
+    setUser(toUser(au))
   }
 
   return (
@@ -87,10 +101,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         isAuthenticated: !!user,
         isLoading,
+        mode,
         login,
         register,
         logout,
         updateUser,
+        setUserFromAuth,
       }}
     >
       {children}

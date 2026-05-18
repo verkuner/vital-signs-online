@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { LoginPage } from '../features/auth/pages/LoginPage'
 import { RegisterPage } from '../features/auth/pages/RegisterPage'
 import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage'
+import { CallbackPage } from '../features/auth/pages/CallbackPage'
 import { ProtectedRoute } from '../features/auth/components/ProtectedRoute'
 import { DashboardLayout } from '../features/layout/components/DashboardLayout'
 import { DashboardPage } from '../features/dashboard/pages/DashboardPage'
@@ -25,6 +26,7 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/callback" element={<CallbackPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
 

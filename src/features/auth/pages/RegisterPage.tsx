@@ -17,12 +17,18 @@ import {
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
-import { IconAlertCircle, IconBrandGoogle, IconBrandGithub } from '@tabler/icons-react'
+import { IconAlertCircle, IconBrandGoogle, IconBrandGithub, IconExternalLink } from '@tabler/icons-react'
 import { useAuth } from '../../../contexts/AuthContext'
+
+function getKeycloakAccountUrl(): string | null {
+  const authority = import.meta.env.VITE_OIDC_AUTHORITY
+  if (!authority) return null
+  return `${authority.replace(/\/$/, '')}/account`
+}
 
 export function RegisterPage() {
   const navigate = useNavigate()
-  const { register } = useAuth()
+  const { register, mode } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -56,7 +62,7 @@ export function RegisterPage() {
         color: 'green',
       })
       navigate('/dashboard')
-    } catch (err) {
+    } catch {
       setError('Failed to create account')
       notifications.show({
         title: 'Error',
@@ -66,6 +72,50 @@ export function RegisterPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (mode === 'oidc') {
+    const accountUrl = getKeycloakAccountUrl()
+    return (
+      <Container size={420} my={40}>
+        <Title ta="center" fw={900}>
+          Create an account
+        </Title>
+        <Text c="dimmed" size="sm" ta="center" mt={5}>
+          Registration is handled by your identity provider
+        </Text>
+
+        <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+          <Stack gap="md">
+            <Text size="sm">
+              This deployment uses KeyCloak for sign-in. Please register through the KeyCloak account
+              console, then return here to sign in.
+            </Text>
+
+            {accountUrl ? (
+              <Button
+                component="a"
+                href={accountUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                fullWidth
+                rightSection={<IconExternalLink size={16} />}
+              >
+                Open KeyCloak account console
+              </Button>
+            ) : (
+              <Alert color="yellow">
+                OIDC authority is not configured; cannot link to the account console.
+              </Alert>
+            )}
+
+            <Button variant="default" fullWidth component={Link} to="/login">
+              Back to sign in
+            </Button>
+          </Stack>
+        </Paper>
+      </Container>
+    )
   }
 
   return (

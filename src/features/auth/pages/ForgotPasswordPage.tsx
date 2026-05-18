@@ -14,10 +14,18 @@ import {
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
-import { IconArrowLeft } from '@tabler/icons-react'
+import { IconArrowLeft, IconExternalLink } from '@tabler/icons-react'
 import { apiForgotPassword } from '../../../services/authService'
+import { useAuth } from '../../../contexts/AuthContext'
+
+function getKeycloakAccountUrl(): string | null {
+  const authority = import.meta.env.VITE_OIDC_AUTHORITY
+  if (!authority) return null
+  return `${authority.replace(/\/$/, '')}/account`
+}
 
 export function ForgotPasswordPage() {
+  const { mode } = useAuth()
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
@@ -50,6 +58,51 @@ export function ForgotPasswordPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (mode === 'oidc') {
+    const accountUrl = getKeycloakAccountUrl()
+    return (
+      <Container size={420} my={40}>
+        <Title ta="center" fw={900}>
+          Reset your password
+        </Title>
+        <Text c="dimmed" size="sm" ta="center" mt={5}>
+          Password resets are handled by your identity provider
+        </Text>
+
+        <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+          <Stack gap="md">
+            <Text size="sm">
+              This deployment uses KeyCloak. Reset your password through the KeyCloak account
+              console.
+            </Text>
+
+            {accountUrl && (
+              <Button
+                component="a"
+                href={accountUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                fullWidth
+                rightSection={<IconExternalLink size={16} />}
+              >
+                Open KeyCloak account console
+              </Button>
+            )}
+
+            <Center>
+              <Anchor component={Link} to="/login" size="sm">
+                <Group gap="xs">
+                  <IconArrowLeft size={16} />
+                  <span>Back to login</span>
+                </Group>
+              </Anchor>
+            </Center>
+          </Stack>
+        </Paper>
+      </Container>
+    )
   }
 
   return (

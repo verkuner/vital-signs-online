@@ -16,12 +16,12 @@ import {
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
-import { IconAlertCircle, IconBrandGoogle, IconBrandGithub } from '@tabler/icons-react'
+import { IconAlertCircle, IconBrandGoogle, IconBrandGithub, IconLogin } from '@tabler/icons-react'
 import { useAuth } from '../../../contexts/AuthContext'
 
 export function LoginPage() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, mode } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -48,7 +48,7 @@ export function LoginPage() {
         color: 'green',
       })
       navigate('/dashboard')
-    } catch (err) {
+    } catch {
       setError('Invalid email or password')
       notifications.show({
         title: 'Error',
@@ -58,6 +58,52 @@ export function LoginPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleOidcLogin = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      // Redirects the browser to KeyCloak; promise effectively never resolves.
+      await login()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start sign-in'
+      setError(message)
+      setLoading(false)
+    }
+  }
+
+  if (mode === 'oidc') {
+    return (
+      <Container size={420} my={40}>
+        <Title ta="center" fw={900}>
+          Welcome
+        </Title>
+        <Text c="dimmed" size="sm" ta="center" mt={5}>
+          Sign in with your organization account
+        </Text>
+
+        <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+          <Stack gap="md">
+            {error && (
+              <Alert icon={<IconAlertCircle size={16} />} color="red">
+                {error}
+              </Alert>
+            )}
+
+            <Button
+              fullWidth
+              size="md"
+              leftSection={<IconLogin size={18} />}
+              onClick={handleOidcLogin}
+              loading={loading}
+            >
+              Sign in with KeyCloak
+            </Button>
+          </Stack>
+        </Paper>
+      </Container>
+    )
   }
 
   return (

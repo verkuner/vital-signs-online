@@ -1,7 +1,9 @@
+import { getAuthStrategy } from '../auth/strategies'
+
 const BASE = import.meta.env.VITE_API_URL || '/api/v1'
 
 function getToken(): string | null {
-  return localStorage.getItem('auth_token')
+  return getAuthStrategy().getAccessToken()
 }
 
 function authHeaders(): HeadersInit {
